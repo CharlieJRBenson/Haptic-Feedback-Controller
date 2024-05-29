@@ -103,7 +103,7 @@ void sampleMatrix() {
 
   int matchedObject = -1;    // variable to store the index of a matched object pattern
   bool nodePressed = false;  // flag to indicate if any node was pressed
-  int tolerance = 500;       // tolerance value for matching sensor reading to calibration
+  int tolerance = 100;       // tolerance value for matching sensor reading to calibration
 
   // check each object's pattern against sensor readings
   for (int obj = 0; obj < numObjects; obj++) {
@@ -147,7 +147,7 @@ void sampleMatrix() {
         break;
 
       case 1:  // second object pattern
-        Serial.println("PATTERN 2");
+        Serial.println("PATTERN 2 DETECTED");
         // pulse pattern
         for (int i = 0; i < 3; i++) {
           analogWrite(VIB1_PIN, 200);
@@ -162,7 +162,7 @@ void sampleMatrix() {
         break;
 
       case 2:  // third object pattern
-        Serial.println("PATTERN 3");
+        Serial.println("PATTERN 3 DETECTED");
         // dotted pattern
         for (int i = 0; i < 5; i++) {
           analogWrite(VIB1_PIN, 200);
@@ -187,24 +187,23 @@ void sampleMatrix() {
   for (int i = 0; i < numRows; i++) {
     for (int j = 0; j < numCols; j++) {
       if (isPressed(i, j)) {
-        totalPressure += sensorValues[i][j];       // add up pressures
-        pressedCount++;                            // increment count of pressed nodes
-        columnPressures[j] += sensorValues[i][j];  // add pressure to the corresponding column
+        totalPressure += sensorValues[i][j];  // add up pressures
+        pressedCount++;                       // increment count of pressed nodes
       }
+      totalPressure += sensorValues[i][j];  // add up pressures
+      columnPressures[j] += sensorValues[i][j];  // add pressure to the corresponding column
     }
   }
 
-  int avgPressure = 0;                           // variable to store average pressure
+  int avgPressure = 1000;                           // variable to store average pressure
   if (pressedCount >= 2) {                       // calculate average if at least two nodes are pressed
-    avgPressure = totalPressure / pressedCount;  // compute average pressure
-    // constrain avgpressure to the range 30-100, evade unexpected spikes
-    avgPressure = constrain(avgPressure, 30, 200);
-    int pumpPwmValue = map(avgPressure, 30, 200, 150, 10);  // map pressure to pwm value
+    avgPressure = totalPressure / 9;  // compute average pressure
+    // constrain avgpressure to the range 0-500, evade unexpected spikes
+    avgPressure = constrain(avgPressure, 0, 500);
+    int pumpPwmValue = map(avgPressure, 500, 100, 10, 150);  // map pressure to pwm value
     analogWrite(motorPwmPin, pumpPwmValue);                 // set pwm for motor
     digitalWrite(motorPin, HIGH);                           // turn motor on
-
-    Serial.print("PumpValue" + String(pumpPwmValue) + "PumpValue");  // print pwm value
-    delay(100);
+    delay(100);                                             //delay required for signal to be correctly sent on hardware
   } else {
     digitalWrite(motorPin, LOW);  // turn motor off if less than two nodes are pressed
   }
@@ -213,9 +212,9 @@ void sampleMatrix() {
   for (int colCount = 0; colCount < numCols; colCount++) {
     int avgColumnPressure = columnPressures[colCount] / numRows;  // calculate average pressure in the column
 
-    // map the pressure to PWM range 30-120, when pressure reading betw rest and 200
-    int vibrationPwm = map(avgColumnPressure, restingValues[0][colCount], 200, 30, 120);
-    vibrationPwm = constrain(vibrationPwm, 30, 120);  // constrain the PWM value
+    avgColumnPressure = constrain(avgColumnPressure, 100, 800);
+    // map the pressure to PWM range 0-255, when pressure reading betw 800 and 100
+    int vibrationPwm = map(avgColumnPressure, 800, 30, 0, 255);
 
     // set the PWM value for the corresponding vibration motor
     if (colCount == 0) {
@@ -227,13 +226,13 @@ void sampleMatrix() {
     }
   }
 
-  // print the sensor values and average pressure
-  for (int i = 0; i < numRows; i++) {
-    for (int j = 0; j < numCols; j++) {
-      Serial.print(sensorValues[i][j]);
-      Serial.print("\t");
-    }
-  }
+  // // print the sensor values and average pressure
+  // for (int i = 0; i < numRows; i++) {
+  //   for (int j = 0; j < numCols; j++) {
+  //     Serial.print(sensorValues[i][j]);
+  //     Serial.print("\t");
+  //   }
+  // }
   Serial.print("\nAverage Pressure: ");
   Serial.println(avgPressure);
   Serial.println();
